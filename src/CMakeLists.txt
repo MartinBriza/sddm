@@ -14,6 +14,7 @@ set(DAEMON_SOURCES
     daemon/DisplayManager.cpp
     daemon/DisplayServer.cpp
     daemon/Greeter.cpp
+    daemon/PAM.cpp
     daemon/PowerManager.cpp
     daemon/Seat.cpp
     daemon/SeatManager.cpp
