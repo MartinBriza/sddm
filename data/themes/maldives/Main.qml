@@ -46,7 +46,7 @@ Rectangle {
         }
     }
 
-    FontLoader { id: clockFont; source: "GeosansLight.ttf" }
+    FontLoader { id: clockFont; source: "Sans" }
 
     Repeater {
         model: screenModel
