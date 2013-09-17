@@ -23,6 +23,7 @@
 #include "DaemonApp.h"
 #include "Display.h"
 #include "DisplayManager.h"
+#include "PAM.h"
 #include "Seat.h"
 #include "Session.h"
 
@@ -31,9 +32,7 @@
 #include <QFile>
 #include <QTextStream>
 
-#ifdef USE_PAM
-#include <security/pam_appl.h>
-#else
+#ifndef USE_PAM
 #include <crypt.h>
 #include <shadow.h>
 #endif
@@ -43,96 +42,6 @@
 #include <unistd.h>
 
 namespace SDDM {
-#ifdef USE_PAM
-    class PamService {
-    public:
-        PamService(const char *service, const QString &user, const QString &password, bool passwordless);
-        ~PamService();
-
-        struct pam_conv m_converse;
-        pam_handle_t *handle { nullptr };
-        int result { PAM_SUCCESS };
-
-        QString user { "" };
-        QString password { "" };
-        bool passwordless { false };
-    };
-
-    int converse(int n, const struct pam_message **msg, struct pam_response **resp, void *data) {
-        struct pam_response *aresp;
-
-        // check size of the message buffer
-        if ((n <= 0) || (n > PAM_MAX_NUM_MSG))
-            return PAM_CONV_ERR;
-
-        // create response buffer
-        if ((aresp = (struct pam_response *) calloc(n, sizeof(struct pam_response))) == nullptr)
-            return PAM_BUF_ERR;
-
-        // respond to the messages
-        bool failed = false;
-        for (int i = 0; i < n; ++i) {
-            aresp[i].resp_retcode = 0;
-            aresp[i].resp = nullptr;
-            switch (msg[i]->msg_style) {
-                case PAM_PROMPT_ECHO_OFF: {
-                    PamService *c = static_cast<PamService *>(data);
-                    // set password
-                    aresp[i].resp = strdup(qPrintable(c->password));
-                    if (aresp[i].resp == nullptr)
-                        failed = true;
-                    // clear password
-                    c->password = "";
-                }
-                    break;
-                case PAM_PROMPT_ECHO_ON: {
-                    PamService *c = static_cast<PamService *>(data);
-                    // set user
-                    aresp[i].resp = strdup(qPrintable(c->user));
-                    if (aresp[i].resp == nullptr)
-                        failed = true;
-                    // clear user
-                    c->user = "";
-                }
-                    break;
-                case PAM_ERROR_MSG:
-                case PAM_TEXT_INFO:
-                    break;
-                default:
-                    failed = true;
-            }
-        }
-
-        if (failed) {
-            for (int i = 0; i < n; ++i) {
-                if (aresp[i].resp != nullptr) {
-                    memset(aresp[i].resp, 0, strlen(aresp[i].resp));
-                    free(aresp[i].resp);
-                }
-            }
-            memset(aresp, 0, n * sizeof(struct pam_response));
-            free(aresp);
-            *resp = nullptr;
-            return PAM_CONV_ERR;
-        }
-
-        *resp = aresp;
-        return PAM_SUCCESS;
-    }
-
-    PamService::PamService(const char *service, const QString &user, const QString &password, bool passwordless) : user(user), password(password), passwordless(passwordless) {
-        // create context
-        m_converse = { &converse, this };
-
-        // start service
-        pam_start(service, nullptr, &m_converse, &handle);
-    }
-
-    PamService::~PamService() {
-        // stop service
-        pam_end(handle, result);
-    }
-#endif
 
     Authenticator::Authenticator(QObject *parent) : QObject(parent) {
     }
@@ -203,48 +112,34 @@ namespace SDDM {
 
 #ifdef USE_PAM
         if (m_pam)
-            delete m_pam;
+            m_pam->deleteLater();
 
-        m_pam = new PamService("sddm", user, password, passwordless);
+        m_pam = new PamService(user, password, passwordless);
+
+        connect(display, SIGNAL(finished()), m_pam, SLOT(deleteLater()));
 
         if (!m_pam)
             return false;
 
-        if (!passwordless) {
-            // authenticate the applicant
-            if ((m_pam->result = pam_authenticate(m_pam->handle, 0)) != PAM_SUCCESS)
-                return false;
-
-            if ((m_pam->result = pam_acct_mgmt(m_pam->handle, 0)) == PAM_NEW_AUTHTOK_REQD)
-                m_pam->result = pam_chauthtok(m_pam->handle, PAM_CHANGE_EXPIRED_AUTHTOK);
-
-            if (m_pam->result != PAM_SUCCESS)
-                return false;
-        }
-
-        // set username
-        if ((m_pam->result = pam_set_item(m_pam->handle, PAM_USER, qPrintable(user))) != PAM_SUCCESS)
-            return false;
-
-        // set credentials
-        if ((m_pam->result = pam_setcred(m_pam->handle, PAM_ESTABLISH_CRED)) != PAM_SUCCESS)
-            return false;
-
         // set tty
-        if ((m_pam->result = pam_set_item(m_pam->handle, PAM_TTY, qPrintable(display->name()))) != PAM_SUCCESS)
+        if (!m_pam->setItem(PAM_TTY, qPrintable(display->name())))
             return false;
 
         // set display name
-        if ((m_pam->result = pam_set_item(m_pam->handle, PAM_XDISPLAY, qPrintable(display->name()))) != PAM_SUCCESS)
+        if (!m_pam->setItem(PAM_XDISPLAY, qPrintable(display->name())))
             return false;
 
-        // open session
-        if ((m_pam->result = pam_open_session(m_pam->handle, 0)) != PAM_SUCCESS)
+        // set username
+        if (!m_pam->setItem(PAM_USER, qPrintable(user)))
+            return false;
+
+        // authenticate the applicant
+        if (!m_pam->authenticate())
             return false;
 
         // get mapped user name; PAM may have changed it
-        char *mapped;
-        if ((m_pam->result = pam_get_item(m_pam->handle, PAM_USER, (const void **)&mapped)) != PAM_SUCCESS)
+        const char *mapped = (const char *) m_pam->getItem(PAM_USER);
+        if (mapped == NULL)
             return false;
 #else
         if (!passwordless) {
@@ -309,23 +204,7 @@ namespace SDDM {
         // set process environment
         QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
 #ifdef USE_PAM
-        // get pam environment
-        char **envlist = pam_getenvlist(m_pam->handle);
-
-        // copy it to the env map
-        for (int i = 0; envlist[i] != nullptr; ++i) {
-            QString s(envlist[i]);
-
-            // find equal sign
-            int index = s.indexOf('=');
-
-            // add to the hash
-            if (index != -1)
-                env.insert(s.left(index), s.mid(index + 1));
-
-            free(envlist[i]);
-        }
-        free(envlist);
+        env.insert(m_pam->getEnv());
 #else
         // we strdup'd the string before in this branch
         free(mapped);
@@ -344,6 +223,20 @@ namespace SDDM {
         env.insert("XDG_VTNR", QString::number(display->terminalId()));
         env.insert("DESKTOP_SESSION", sessionName);
         env.insert("GDMSESSION", sessionName);
+#ifdef USE_PAM
+        m_pam->putEnv(env);
+
+        if (!m_pam->acctMgmt())
+            return false;
+
+        // set credentials
+        if (!m_pam->setCred(PAM_ESTABLISH_CRED))
+            return false;
+
+        // open session
+        if (!m_pam->openSession())
+            return false;
+#endif
         process->setProcessEnvironment(env);
 
         // redirect error output to ~/.xession-errors
@@ -412,14 +305,8 @@ namespace SDDM {
         process = nullptr;
 
 #ifdef USE_PAM
-        if (m_pam) {
-            m_pam->result = pam_close_session(m_pam->handle, 0);
-            m_pam->result = pam_setcred(m_pam->handle, PAM_DELETE_CRED);
-            // for some reason this has to be called here too
-            pam_end(m_pam->handle, m_pam->result);
-            delete m_pam;
-            m_pam = nullptr;
-        }
+        delete m_pam;
+        m_pam = nullptr;
 #endif
 
         // emit signal
