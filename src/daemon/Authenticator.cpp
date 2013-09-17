@@ -112,10 +112,11 @@ namespace SDDM {
 
 #ifdef USE_PAM
         if (m_pam)
-            delete m_pam;
+            m_pam->deleteLater();
 
         m_pam = new PamService("sddm", user, password, passwordless);
-        
+
+        connect(display, SIGNAL(finished()), m_pam, SLOT(deleteLater()));
 
         if (!m_pam)
             return false;
