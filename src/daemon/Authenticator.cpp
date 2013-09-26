@@ -249,6 +249,9 @@ namespace SDDM {
 
         // connect signal
         connect(process, SIGNAL(finished(int,QProcess::ExitStatus)), this, SLOT(finished()));
+#ifdef USE_PAM
+        connect(process, SIGNAL(finished(int,QProcess::ExitStatus)), m_pam, SLOT(deleteLater()));
+#endif
 
         // wait for started
         if (!process->waitForStarted()) {
@@ -305,11 +308,6 @@ namespace SDDM {
         // delete session process
         process->deleteLater();
         process = nullptr;
-
-#ifdef USE_PAM
-        delete m_pam;
-        m_pam = nullptr;
-#endif
 
         // emit signal
         emit stopped();
