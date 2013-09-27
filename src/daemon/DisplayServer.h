@@ -37,14 +37,14 @@ namespace SDDM {
         void setAuthPath(const QString &authPath);
 
     public slots:
-        bool start();
+        virtual bool start();
         void stop();
         void finished();
 
     signals:
         void stopped();
 
-    private:
+    protected:
         bool waitForStarted(int msecs = 10000);
 
         bool m_started { false };

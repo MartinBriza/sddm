@@ -113,12 +113,14 @@ namespace SDDM {
         // log message
         qDebug() << " DAEMON: Display server stopping...";
 
-        // terminate process
-        process->terminate();
+        if (process != nullptr) {
+            // terminate process
+            process->terminate();
 
-        // wait for finished
-        if (!process->waitForFinished(5000))
-            process->kill();
+            // wait for finished
+            if (!process->waitForFinished(5000))
+                process->kill();
+        }
     }
 
     void DisplayServer::finished() {
@@ -133,8 +135,10 @@ namespace SDDM {
         qDebug() << " DAEMON: Display server stopped.";
 
         // clean up
-        process->deleteLater();
-        process = nullptr;
+        if (process != nullptr) {
+            process->deleteLater();
+            process = nullptr;
+        }
 
         // emit signal
         emit stopped();
@@ -167,11 +171,21 @@ namespace SDDM {
         }
 
         if (connection != nullptr) {
-            // close connection
-            xcb_disconnect(connection);
+            int xcbError;
+            if ((xcbError = xcb_connection_has_error(connection)) != 0) {
+                qDebug() << " Daemon: XCB has error" << xcbError;
+            }
+            else {
+                qDebug() << " Daemon: XCB connection was successful";
+                // close connection
+                //xcb_disconnect(connection);
+            }
 
             // set success flag
             result = true;
+        }
+        else {
+            qDebug() << " Daemon: XCB connection was unsuccessful";
         }
 
         // free resources
