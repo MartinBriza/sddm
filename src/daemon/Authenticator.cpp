@@ -116,8 +116,6 @@ namespace SDDM {
 
         m_pam = new PamService("sddm", user, password, passwordless);
 
-        connect(display, SIGNAL(finished()), m_pam, SLOT(deleteLater()));
-
         if (!m_pam)
             return false;
 

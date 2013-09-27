@@ -30,6 +30,10 @@
 #include <pwd.h>
 #include <unistd.h>
 
+#ifdef USE_PAM
+#include "PAM.h"
+#endif
+
 namespace SDDM {
     Session::Session(const QString &name, QObject *parent) : QProcess(parent), m_name(name) {
     }
@@ -53,6 +57,12 @@ namespace SDDM {
     void Session::setGid(int gid) {
         m_gid = gid;
     }
+
+#ifdef USE_PAM
+    void Session::setPamService(PamService *pam) {
+        m_pam = pam;
+    }
+#endif
 
     void Session::setupChildProcess() {
         if (daemonApp->configuration()->testing)

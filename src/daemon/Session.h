@@ -23,6 +23,9 @@
 #include <QProcess>
 
 namespace SDDM {
+#ifdef USE_PAM
+    class PamService;
+#endif
     class Session : public QProcess {
         Q_OBJECT
         Q_DISABLE_COPY(Session)
@@ -35,6 +38,9 @@ namespace SDDM {
         void setDir(const QString &dir);
         void setUid(int uid);
         void setGid(int gid);
+#ifdef USE_PAM
+        void setPamService(PamService *pam);
+#endif
 
     protected:
         void setupChildProcess();
@@ -45,6 +51,9 @@ namespace SDDM {
         QString m_dir { "" };
         int m_uid { 0 };
         int m_gid { 0 };
+#ifdef USE_PAM
+        PamService *m_pam { nullptr };
+#endif
     };
 }
 
