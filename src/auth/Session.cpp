@@ -19,10 +19,7 @@
 
 #include "Session.h"
 
-#include "Authenticator.h"
 #include "Configuration.h"
-#include "DaemonApp.h"
-#include "Display.h"
 
 #include <QDebug>
 
@@ -55,13 +52,8 @@ namespace SDDM {
     }
 
     void Session::setupChildProcess() {
-        if (daemonApp->configuration()->testing)
-            return;
-
-        Authenticator *authenticator = qobject_cast<Authenticator *>(parent());
-
         if (initgroups(qPrintable(m_user), m_gid)) {
-            qCritical() << " DAEMON: Failed to initialize user groups.";
+            qCritical() << " AUTH: Failed to initialize user groups.";
 
             // emit signal
             emit finished(EXIT_FAILURE, QProcess::NormalExit);
@@ -70,8 +62,14 @@ namespace SDDM {
             exit(EXIT_FAILURE);
         }
 
+        if (setsid() < 0) {
+            qCritical() << " AUTH: Can't create a new session.";
+            emit finished(EXIT_FAILURE, QProcess::NormalExit);
+            exit(EXIT_FAILURE);
+        }
+
         if (setgid(m_gid)) {
-            qCritical() << " DAEMON: Failed to set group id.";
+            qCritical() << " AUTH: Failed to set group id.";
 
             // emit signal
             emit finished(EXIT_FAILURE, QProcess::NormalExit);
@@ -81,7 +79,7 @@ namespace SDDM {
         }
 
         if (setuid(m_uid)) {
-            qCritical() << " DAEMON: Failed to set user id.";
+            qCritical() << " AUTH: Failed to set user id.";
 
             // emit signal
             emit finished(EXIT_FAILURE, QProcess::NormalExit);
@@ -90,14 +88,14 @@ namespace SDDM {
             exit(EXIT_FAILURE);
 
         }
-
+/* FIXME
         // add cookie
         Display *display = qobject_cast<Display *>(authenticator->parent());
         display->addCookie(QString("%1/.Xauthority").arg(m_dir));
-
+*/
         // change to user home dir
         if (chdir(qPrintable(m_dir))) {
-            qCritical() << " DAEMON: Failed to change dir to user home.";
+            qCritical() << " AUTH: Failed to change dir to user home.";
 
             // emit signal
             emit finished(EXIT_FAILURE, QProcess::NormalExit);

@@ -40,6 +40,20 @@ namespace SDDM {
         LoginFailed
     };
 
+    enum class AuthMessages {
+        AuthNone = 0,
+        Start,
+        End,
+        RequestEnv,
+        Env,
+        LoginFailed,
+        LoginSucceeded,
+        RequestSessionID,
+        SessionID,
+        RequestCookieLink,
+        CookieLink
+    };
+
     enum Capability {
         None = 0x0000,
         PowerOff = 0x0001,

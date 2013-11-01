@@ -26,9 +26,6 @@
 #ifdef USE_PAM
 #include "PAM.h"
 
-#include "Display.h"
-#include "Seat.h"
-
 #include <QtCore/QDebug>
 
 namespace SDDM {
@@ -37,7 +34,7 @@ namespace SDDM {
         foreach (const QString& s, env.toStringList()) {
             result = pam_putenv(handle, s.toAscii());
             if (result != PAM_SUCCESS) {
-                qWarning() << " DAEMON: PAM: putEnv:" << pam_strerror(handle, result);
+                qWarning() << " AUTH: PAM: putEnv:" << pam_strerror(handle, result);
                 return false;
             }
         }
@@ -49,7 +46,7 @@ namespace SDDM {
         // get pam environment
         char **envlist = pam_getenvlist(handle);
         if (envlist == NULL) {
-            qWarning() << " DAEMON: PAM: getEnv: Returned NULL";
+            qWarning() << " AUTH: PAM: getEnv: Returned NULL";
             return env;
         }
 
@@ -73,7 +70,7 @@ namespace SDDM {
     bool PamService::chAuthTok(int flags) {
         result = pam_chauthtok(handle, flags | m_silent);
         if (result != PAM_SUCCESS) {
-            qWarning() << " DAEMON: PAM: chAuthTok:" << pam_strerror(handle, result);
+            qWarning() << " AUTH: PAM: chAuthTok:" << pam_strerror(handle, result);
         }
         return result == PAM_SUCCESS;
     }
@@ -85,7 +82,7 @@ namespace SDDM {
             return chAuthTok(PAM_CHANGE_EXPIRED_AUTHTOK);
         }
         else if (result != PAM_SUCCESS) {
-            qWarning() << " DAEMON: PAM: acctMgmt:" << pam_strerror(handle, result);
+            qWarning() << " AUTH: PAM: acctMgmt:" << pam_strerror(handle, result);
             return false;
         }
         return true;
@@ -94,7 +91,7 @@ namespace SDDM {
     bool PamService::authenticate(int flags) {
         result = pam_authenticate(handle, flags | m_silent);
         if (result != PAM_SUCCESS) {
-            qWarning() << " DAEMON: PAM: authenticate:" << pam_strerror(handle, result);
+            qWarning() << " AUTH: PAM: authenticate:" << pam_strerror(handle, result);
         }
         return result == PAM_SUCCESS;
     }
@@ -102,37 +99,31 @@ namespace SDDM {
     bool PamService::setCred(int flags) {
         result = pam_setcred(handle, flags | m_silent);
         if (result != PAM_SUCCESS) {
-            qWarning() << " DAEMON: PAM: setCred:" << pam_strerror(handle, result);
+            qWarning() << " AUTH: PAM: setCred:" << pam_strerror(handle, result);
         }
         return result == PAM_SUCCESS;
     }
 
     bool PamService::openSession() {
-        if (m_sessionOpened) {
-            setCred(PAM_DELETE_CRED);
-            closeSession();
-        }
         result = pam_open_session(handle, m_silent);
         if (result != PAM_SUCCESS) {
-            qWarning() << " DAEMON: PAM: openSession:" << pam_strerror(handle, result);
+            qWarning() << " AUTH: PAM: openSession:" << pam_strerror(handle, result);
         }
-        m_sessionOpened = result == PAM_SUCCESS;
-        return m_sessionOpened;
+        return result == PAM_SUCCESS;
     }
 
     bool PamService::closeSession() {
         result = pam_close_session(handle, m_silent);
         if (result != PAM_SUCCESS) {
-            qWarning() << " DAEMON: PAM: closeSession:" << pam_strerror(handle, result);
+            qWarning() << " AUTH: PAM: closeSession:" << pam_strerror(handle, result);
         }
-        m_sessionOpened = !(result == PAM_SUCCESS);
         return result == PAM_SUCCESS;
     }
 
     bool PamService::setItem(int item_type, const void* item) {
         result = pam_set_item(handle, item_type, item);
         if (result != PAM_SUCCESS) {
-            qWarning() << " DAEMON: PAM: setItem:" << pam_strerror(handle, result);
+            qWarning() << " AUTH: PAM: setItem:" << pam_strerror(handle, result);
         }
         return result == PAM_SUCCESS;
     }
@@ -141,7 +132,7 @@ namespace SDDM {
         const void *item;
         result = pam_get_item(handle, item_type, &item);
         if (result != PAM_SUCCESS) {
-            qWarning() << " DAEMON: PAM: getItem:" << pam_strerror(handle, result);
+            qWarning() << " AUTH: PAM: getItem:" << pam_strerror(handle, result);
         }
         return item;
     }
@@ -170,7 +161,7 @@ namespace SDDM {
                 switch(msg[i]->msg_style) {
                     case PAM_ERROR_MSG:
                     case PAM_TEXT_INFO:
-                        qDebug() << " DAEMON: PAM: Message" << msg[i]->msg;
+                        qDebug() << " AUTH: PAM: Message" << msg[i]->msg;
                         break;
                     case PAM_PROMPT_ECHO_OFF:
                     case PAM_PROMPT_ECHO_ON:
@@ -204,7 +195,7 @@ namespace SDDM {
                         break;
                     case PAM_ERROR_MSG:
                     case PAM_TEXT_INFO:
-                        qDebug() << " DAEMON: PAM: Message:" << msg[i]->msg;
+                        qDebug() << " AUTH: PAM: Message:" << msg[i]->msg;
                         break;
                     default:
                         failed = true;
@@ -230,35 +221,26 @@ namespace SDDM {
     }
 
     bool PamService::start(const char *service_name, const char *user, const struct pam_conv *pam_conversation) {
-        if (m_started) {
-            end();
-        }
         result = pam_start(service_name, user, pam_conversation, &handle);
         if (result != PAM_SUCCESS) {
-            qWarning() << " DAEMON: PAM: start" << pam_strerror(handle, result);
+            qWarning() << " AUTH: PAM: start" << pam_strerror(handle, result);
             return false;
         }
         else {
-            qDebug() << " DAEMON: PAM: Starting...";
+            qDebug() << " AUTH: PAM: Starting...";
         }
-        m_started = true;
         return true;
     }
 
-    bool PamService::end() {
-        if (m_sessionOpened) {
-            setCred(PAM_DELETE_CRED);
-            closeSession();
-        }
-        result = pam_end(handle, result);
+    bool PamService::end(int flags) {
+        result = pam_end(handle, result | flags);
         if (result != PAM_SUCCESS) {
-            qWarning() << " DAEMON: PAM: end:" << pam_strerror(handle, result);
+            qWarning() << " AUTH: PAM: end:" << pam_strerror(handle, result);
             return false;
         }
         else {
-            qDebug() << " DAEMON: PAM: Ended.";
+            qDebug() << " AUTH: PAM: Ended.";
         }
-        m_started = false;
         return true;
     }
 

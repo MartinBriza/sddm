@@ -23,9 +23,11 @@
 #include "Configuration.h"
 #include "DaemonApp.h"
 #include "DisplayServer.h"
+#include "DisplayManager.h"
 #include "Seat.h"
 #include "SocketServer.h"
 #include "Greeter.h"
+#include <pwd.h>
 
 #include <QDebug>
 #include <QDir>
@@ -112,12 +114,38 @@ namespace SDDM {
         return m_cookie;
     }
 
+    QProcessEnvironment Display::sessionEnv(const QString& user) const {
+        struct passwd *pw;
+        QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+        Seat *seat = qobject_cast<Seat *>(parent());
+
+        if ((pw = getpwnam(qPrintable(user))) == nullptr) {
+            // log error
+            qCritical() << " DAEMON: Failed to get user name.";
+
+            // return fail
+            return QProcessEnvironment();
+        }
+        env.insert("HOME", pw->pw_dir);
+        env.insert("PWD", pw->pw_dir);
+        env.insert("SHELL", pw->pw_shell);
+        env.insert("USER", pw->pw_name);
+        env.insert("LOGNAME", pw->pw_name);
+        env.insert("PATH", daemonApp->configuration()->defaultPath());
+        env.insert("DISPLAY", name());
+        env.insert("XAUTHORITY", QString("%1/.Xauthority").arg(pw->pw_dir));
+        env.insert("XDG_SEAT", seat->name());
+        env.insert("XDG_SEAT_PATH", daemonApp->displayManager()->seatPath(seat->name()));
+        env.insert("XDG_VTNR", QString::number(terminalId()));
+        return env;
+    }
+
     void Display::addCookie(const QString &file) {
         // log message
         qDebug() << " DAEMON: Adding cookie to" << file;
 
-        // remove file
-        QFile::remove(file);
+        // remove the file
+        QFile::remove(m_authPath);
 
         QString cmd = QString("%1 -f %2 -q").arg(daemonApp->configuration()->xauthPath()).arg(file);
 
@@ -171,7 +199,7 @@ namespace SDDM {
             m_started = true;
 
             // start session
-            m_authenticator->start(daemonApp->configuration()->autoUser(), daemonApp->configuration()->lastSession());
+            m_authenticator->start(nullptr, daemonApp->configuration()->autoUser(), daemonApp->configuration()->lastSession(), QString(), true);
 
             // return
             return;
@@ -232,20 +260,13 @@ namespace SDDM {
 
     void Display::login(QLocalSocket *socket, const QString &user, const QString &password, const QString &session) {
         // start session
-        if (!m_authenticator->start(user, password, session)) {
-            // emit signal
-            emit loginFailed(socket);
+        connect(m_authenticator, SIGNAL(loginFailed(QLocalSocket*)), this, SIGNAL(loginFailed(QLocalSocket*)));
+        connect(m_authenticator, SIGNAL(loginSucceeded(QLocalSocket*)), this, SIGNAL(loginSucceeded(QLocalSocket*)));
+        m_authenticator->start(socket, user, session, password, false);
 
-            // return
-            return;
-        }
-
-        // save last user and last session
-        daemonApp->configuration()->setLastUser(user);
-        daemonApp->configuration()->setLastSession(session);
-        daemonApp->configuration()->save();
-
-        // emit signal
-        emit loginSucceeded(socket);
+        // save last user and last session FIXME
+//         daemonApp->configuration()->setLastUser(user);
+//         daemonApp->configuration()->setLastSession(session);
+//         daemonApp->configuration()->save();
     }
 }

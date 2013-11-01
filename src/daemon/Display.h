@@ -21,6 +21,7 @@
 #define SDDM_DISPLAY_H
 
 #include <QObject>
+#include <QtCore/QProcess>
 
 class QLocalSocket;
 
@@ -39,6 +40,7 @@ namespace SDDM {
 
         const int displayId() const;
         const int terminalId() const;
+        QProcessEnvironment sessionEnv(const QString& user) const;
 
         const QString &name() const;
 
@@ -54,8 +56,8 @@ namespace SDDM {
     signals:
         void stopped();
 
-        void loginFailed(QLocalSocket *socket);
-        void loginSucceeded(QLocalSocket *socket);
+        void loginFailed(QLocalSocket*);
+        void loginSucceeded(QLocalSocket*);
 
     private:
         bool m_relogin { true };

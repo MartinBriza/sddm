@@ -173,9 +173,10 @@ namespace SDDM {
         /**
          * pam_end - termination of PAM transaction
          *
+         * \param flags to be OR'd with the status (PAM_DATA_SILENT)
          * \return true on success
          */
-        bool end();
+        bool end(int flags = 0);
 
         /**
          * pam_start - initialization of PAM transaction
@@ -200,10 +201,6 @@ namespace SDDM {
         }
 
     private:
-
-        bool m_started { false };
-        bool m_sessionOpened { false };
-
         int m_silent { 0 }; ///< flag mask for silence of the contained calls
 
         struct pam_conv m_converse; ///< the current conversation

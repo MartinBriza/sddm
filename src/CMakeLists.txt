@@ -14,11 +14,9 @@ set(DAEMON_SOURCES
     daemon/DisplayManager.cpp
     daemon/DisplayServer.cpp
     daemon/Greeter.cpp
-    daemon/PAM.cpp
     daemon/PowerManager.cpp
     daemon/Seat.cpp
     daemon/SeatManager.cpp
-    daemon/Session.cpp
     daemon/SignalHandler.cpp
     daemon/SocketServer.cpp
 )
@@ -30,11 +28,6 @@ if(USE_QT5)
 
     add_executable(sddm ${DAEMON_SOURCES})
     target_link_libraries(sddm ${LIBXCB_LIBRARIES})
-    if(PAM_FOUND)
-      target_link_libraries(sddm ${PAM_LIBRARIES})
-    else()
-      target_link_libraries(sddm crypt)
-    endif()
     qt5_use_modules(sddm DBus Network)
 else()
     set(QT_USE_QTNETWORK TRUE)
@@ -55,6 +48,38 @@ else()
 endif()
 
 install(TARGETS sddm DESTINATION ${BIN_INSTALL_DIR})
+
+## AUTHENTICATOR ##
+
+set(AUTHENTICATOR_SOURCES
+    auth/AuthenticatorApp.cpp
+    auth/Method.cpp
+    auth/PAM.cpp
+    auth/Session.cpp
+    common/Configuration.cpp
+)
+
+if(USE_QT5)
+    add_executable(sddm-auth ${AUTHENTICATOR_SOURCES})
+    target_link_libraries(sddm-auth ${LIBXCB_LIBRARIES})
+    if(PAM_FOUND)
+      target_link_libraries(sddm-auth ${PAM_LIBRARIES})
+    else()
+      target_link_libraries(sddm-auth crypt)
+    endif()
+else()
+    include(${QT_USE_FILE})
+
+    add_executable(sddm-auth ${AUTHENTICATOR_SOURCES})
+    target_link_libraries(sddm-auth ${LIBXCB_LIBRARIES} ${QT_LIBRARIES})
+    if(PAM_FOUND)
+      target_link_libraries(sddm-auth ${PAM_LIBRARIES})
+    else()
+      target_link_libraries(sddm-auth crypt)
+    endif()
+endif()
+
+install(TARGETS sddm-auth DESTINATION ${BIN_INSTALL_DIR})
 
 ## GREETER ##
 

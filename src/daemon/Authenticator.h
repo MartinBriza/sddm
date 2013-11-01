@@ -20,42 +20,40 @@
 #ifndef SDDM_AUTHENTICATOR_H
 #define SDDM_AUTHENTICATOR_H
 
+#include "Messages.h"
+
 #include <QObject>
+#include <QtCore/QProcess>
 
+class QLocalSocket;
 namespace SDDM {
-#ifdef USE_PAM
-    class PamService;
-#endif
-    class Session;
 
-    class AuthenticatorPrivate;
-    class Authenticator : public QObject {
+    class Display;
+    class Authenticator : public QProcess {
         Q_OBJECT
         Q_DISABLE_COPY(Authenticator)
     public:
-        Authenticator(QObject *parent = 0);
-        ~Authenticator();
+        explicit Authenticator(Display *parent = nullptr);
+
+    private slots:
+        void readFromChild();
+        void handleMessage(AuthMessages command);
+        void forwardErrorOutput();
 
     public slots:
-        bool start(const QString &user, const QString &session);
-        bool start(const QString &user, const QString &password, const QString &session);
-
+        void start(QLocalSocket *socket, const QString& user, const QString& session, const QString& password, bool passwordless);
         void stop();
-        void finished();
 
     signals:
+        void loginFailed(QLocalSocket*);
+        void loginSucceeded(QLocalSocket*);
         void stopped();
 
     private:
-        bool doStart(const QString &user, const QString &password, const QString &session, bool passwordless);
-
+        QString m_name;
+        Display *m_display { nullptr };
+        QLocalSocket *m_parentSocket { nullptr }; // to be got rid of soon
         bool m_started { false };
-
-#ifdef USE_PAM
-        PamService *m_pam { nullptr };
-#endif
-
-        Session *process { nullptr };
     };
 }
 
