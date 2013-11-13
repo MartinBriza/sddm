@@ -7,6 +7,8 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
 
 add_definitions(-Wall -march=native -std=c++11)
+include(FeatureSummary)
+
 
 if(NOT CMAKE_BUILD_TYPE)
         set(CMAKE_BUILD_TYPE Release)
@@ -95,6 +97,8 @@ set(PASSWD_FILE                 "${SYS_CONFIG_DIR}/passwd"                  CACH
 set(CONFIG_FILE                 "${SYS_CONFIG_DIR}/sddm.conf"               CACHE PATH      "Path of the sddm config file")
 set(LOG_FILE                    "/var/log/sddm.log"                         CACHE PATH      "Path of the sddm log file")
 set(COMPONENTS_TRANSLATION_DIR  "${DATA_INSTALL_DIR}/translations"          CACHE PATH      "Components translations directory")
+
+feature_summary(WHAT ALL   FATAL_ON_MISSING_REQUIRED_PACKAGES)
 
 add_subdirectory(components)
 add_subdirectory(data)
