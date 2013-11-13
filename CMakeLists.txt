@@ -44,6 +44,9 @@ find_package(XKB REQUIRED)
 
 if(USE_QT5)
   find_package(Qt5Core REQUIRED)
+  find_package(Qt5Quick REQUIRED)
+  find_package(Qt5Gui REQUIRED)
+  find_package(Qt5Network REQUIRED)
   find_package(Qt5DBus REQUIRED)
   find_package(Qt5LinguistTools REQUIRED)
 
