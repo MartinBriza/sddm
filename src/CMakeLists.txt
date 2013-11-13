@@ -27,8 +27,7 @@ if(USE_QT5)
     qt5_add_dbus_adaptor(DAEMON_SOURCES ${CMAKE_SOURCE_DIR}/data/interfaces/org.freedesktop.DisplayManager.Session.xml  daemon/DisplayManager.h SDDM::DisplayManagerSession)
 
     add_executable(sddm ${DAEMON_SOURCES})
-    target_link_libraries(sddm ${LIBXCB_LIBRARIES})
-    qt5_use_modules(sddm DBus Network)
+    target_link_libraries(sddm ${LIBXCB_LIBRARIES} Qt5::Core Qt5::DBus Qt5::Network)
 else()
     set(QT_USE_QTNETWORK TRUE)
     set(QT_USE_QTDBUS TRUE)
@@ -61,7 +60,7 @@ set(AUTHENTICATOR_SOURCES
 
 if(USE_QT5)
     add_executable(sddm-auth ${AUTHENTICATOR_SOURCES})
-    target_link_libraries(sddm-auth ${LIBXCB_LIBRARIES})
+    target_link_libraries(sddm-auth Qt5::Core)
     if(PAM_FOUND)
       target_link_libraries(sddm-auth ${PAM_LIBRARIES})
     else()
@@ -98,8 +97,7 @@ set(GREETER_SOURCES
 
 if(USE_QT5)
     add_executable(sddm-greeter ${GREETER_SOURCES})
-    target_link_libraries(sddm-greeter ${LIBXCB_LIBRARIES} ${LIBXKB_LIBRARIES})
-    qt5_use_modules(sddm-greeter Quick)
+    target_link_libraries(sddm-greeter ${LIBXCB_LIBRARIES} ${LIBXKB_LIBRARIES} Qt5::Core Qt5::Quick Qt5::Gui)
 else()
     set(QT_USE_QTDECLARATIVE TRUE)
     include(${QT_USE_FILE})
