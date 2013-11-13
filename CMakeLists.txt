@@ -29,7 +29,7 @@ find_package(PkgConfig)
 
 # PAM
 if(NOT NO_PAM)
-  find_package(PAM)
+  find_package(PAM REQUIRED)
 
   if(PAM_FOUND)
     add_definitions(-DUSE_PAM)
