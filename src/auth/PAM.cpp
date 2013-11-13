@@ -32,7 +32,7 @@ namespace SDDM {
 
     bool PamService::putEnv(const QProcessEnvironment& env) {
         foreach (const QString& s, env.toStringList()) {
-            result = pam_putenv(handle, s.toAscii());
+            result = pam_putenv(handle, s.toLatin1());
             if (result != PAM_SUCCESS) {
                 qWarning() << " AUTH: PAM: putEnv:" << pam_strerror(handle, result);
                 return false;
