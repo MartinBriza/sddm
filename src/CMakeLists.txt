@@ -63,6 +63,8 @@ if(USE_QT5)
     target_link_libraries(sddm-auth Qt5::Core)
     if(PAM_FOUND)
       target_link_libraries(sddm-auth ${PAM_LIBRARIES})
+      set_target_properties(sddm-auth PROPERTIES COMPILE_DEFINITIONS "USE_PAM=1")
+
     else()
       target_link_libraries(sddm-auth crypt)
     endif()
