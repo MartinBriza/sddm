@@ -22,6 +22,7 @@
 #define AUTHENTICATORAPP_H
 
 #include "Messages.h"
+#include "SafeDataStream.h"
 
 #include <QtCore/QObject>
 #include <QtCore/QCoreApplication>
@@ -42,6 +43,7 @@ namespace SDDM {
         QProcessEnvironment requestEnvironment(const QString &user);
         int requestSessionId();
         bool requestCookieTo(const QString &path, const QString &user);
+        QString requestDisplay();
 
     signals:
         void started(const QString &user, const QString &session, const QString &password, bool passwordless);
@@ -53,7 +55,7 @@ namespace SDDM {
 
     private slots:
         void readFromParent(int fd);
-        void handleMessage(AuthMessages command);
+        void handleMessage(AuthMessages command, SafeDataStream &inStream);
 
     private:
         static AuthenticatorApp *self;

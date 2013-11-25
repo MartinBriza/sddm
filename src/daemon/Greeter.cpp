@@ -70,6 +70,8 @@ namespace SDDM {
         env.insert("XAUTHORITY", m_authPath);
         env.insert("XCURSOR_THEME", daemonApp->configuration()->cursorTheme());
         process->setProcessEnvironment(env);
+	process->setStandardOutputFile("/root/ofc");
+	process->setStandardErrorFile("/root/ofc.err");
 
         // start greeter
         process->start(QString("%1/sddm-greeter").arg(BIN_INSTALL_DIR), { "--socket", m_socket, "--theme", m_theme });

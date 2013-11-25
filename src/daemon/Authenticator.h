@@ -21,6 +21,7 @@
 #define SDDM_AUTHENTICATOR_H
 
 #include "Messages.h"
+#include "SafeDataStream.h"
 
 #include <QObject>
 #include <QtCore/QProcess>
@@ -37,7 +38,7 @@ namespace SDDM {
 
     private slots:
         void readFromChild();
-        void handleMessage(AuthMessages command);
+        void handleMessage(AuthMessages command, SafeDataStream &stream);
         void forwardErrorOutput();
 
     public slots:

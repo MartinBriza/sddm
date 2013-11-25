@@ -57,28 +57,25 @@ namespace SDDM {
     }
 
     void Authenticator::readFromChild() {
-        QDataStream stream(this);
-        while (this->bytesAvailable()) {
-            quint32 command;
-            stream >> command;
-            qDebug() << " DAEMON: Received message" << command << "from the authenticator";
-            handleMessage(AuthMessages(command));
-            if (stream.status() != QDataStream::Ok)
-                break;
-        }
+        SafeDataStream stream(this);
+        quint32 command;
+        qDebug() << " DAEMON: Received message" << command << "from the authenticato1r";
+        stream.receive();
+        stream >> command;
+        qDebug() << " DAEMON: Received message" << command << "from the authenticator2";
+        handleMessage(AuthMessages(command), stream);
     }
 
-    void Authenticator::handleMessage(AuthMessages command) {
-        QDataStream stream(this);
+    void Authenticator::handleMessage(AuthMessages command, SafeDataStream &stream) {
         switch (command) {
             case AuthMessages::RequestEnv: {
                 QString user;
                 stream >> user;
                 QStringList env = m_display->sessionEnv(user).toStringList();
-                stream << quint32(AuthMessages::Env) << env.count();
-                foreach (const QString &s, env) {
-                    stream << s;
-                }
+                qDebug() << "Environment for user" << user << "will be" << env;
+                stream.clear();
+                stream << quint32(AuthMessages::Env) << env;
+                stream.send();
                 break;
             }
             case AuthMessages::LoginFailed:
@@ -92,7 +89,9 @@ namespace SDDM {
                 break;
             }
             case AuthMessages::RequestSessionID:
+                stream.clear();
                 stream << quint32(AuthMessages::SessionID) << int(DaemonApp::instance()->newSessionId());
+                stream.send();
                 break;
             case AuthMessages::RequestCookieLink: {
                 QString path, user;
@@ -103,9 +102,16 @@ namespace SDDM {
                 pw = getpwnam(qPrintable(user));
                 if(pw)
                     chown(qPrintable(path), pw->pw_uid, pw->pw_gid);
+                stream.clear();
                 stream << quint32(AuthMessages::CookieLink);
+                stream.send();
                 break;
             }
+            case AuthMessages::RequestDisplay:
+                stream.clear();
+                stream << quint32(AuthMessages::Display) << m_display->name();
+                stream.send();
+                break;
             default:
                 qWarning() << " DAEMON: Child sent message type" << quint32(command) << "which cannot be handled.";
                 break;
@@ -118,8 +124,9 @@ namespace SDDM {
 
         m_parentSocket = socket;
 
-        QDataStream stream(this);
+        SafeDataStream stream(this);
         stream << quint32(AuthMessages::Start) << user << session << password << passwordless;
+        stream.send();
 
         qDebug() << " DAEMON: Starting authentication for user" << user;
     }
@@ -131,8 +138,9 @@ namespace SDDM {
         // unregister from the display manager
         daemonApp->displayManager()->RemoveSession(m_name);
 
-        QDataStream stream(this);
+        SafeDataStream stream(this);
         stream << quint32(AuthMessages::End);
+        stream.send();
 
         m_started = false;
         qDebug() << " DAEMON: Stopped the authenticator process";

@@ -28,6 +28,7 @@
 #include <QApplication>
 #include <QDesktopWidget>
 #endif
+#include <QDebug>
 
 namespace SDDM {
     class Screen {
@@ -168,11 +169,14 @@ namespace SDDM {
 
         for (int i = 0; i < screenCount; ++i) {
             QRect geometry = QApplication::desktop()->screenGeometry(i);
+            qDebug() << "Screen" << geometry << QApplication::desktop()->screen(i)->pos();
             // add to the screens list
             d->screens << ScreenPtr { new Screen { QString("Screen %1").arg(i + 1), geometry } };
             // extend available geometry
             d->geometry = d->geometry.united(geometry);
         }
+        QApplication::desktop()->screen()->setGeometry(d->geometry);
+        QApplication::desktop()->screen()->showMaximized();
 #endif
         endResetModel();
 

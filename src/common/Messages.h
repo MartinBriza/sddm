@@ -51,7 +51,9 @@ namespace SDDM {
         RequestSessionID,
         SessionID,
         RequestCookieLink,
-        CookieLink
+        CookieLink,
+        RequestDisplay,
+        Display
     };
 
     enum Capability {

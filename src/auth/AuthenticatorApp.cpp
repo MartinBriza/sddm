@@ -63,16 +63,15 @@ namespace SDDM {
 
     void AuthenticatorApp::readFromParent(int fd) {
         qDebug() << " AUTH: Message received" << m_input.bytesAvailable();
-        QDataStream inStream(&m_input);
+        SafeDataStream inStream(&m_input);
         quint32 command = quint32(AuthMessages::AuthNone);
+        inStream.receive();
         inStream >> command;
         qDebug() << "Command" << command;
-        handleMessage(AuthMessages(command));
+        handleMessage(AuthMessages(command), inStream);
     }
 
-    void AuthenticatorApp::handleMessage(AuthMessages command) {
-        QDataStream inStream(&m_input);
-        QDataStream outStream(&m_output);
+    void AuthenticatorApp::handleMessage(AuthMessages command, SafeDataStream& inStream) {
         switch (command) {
             case AuthMessages::Start: {
                 QString user, session, password;
@@ -91,45 +90,47 @@ namespace SDDM {
 
     QProcessEnvironment AuthenticatorApp::requestEnvironment(const QString &user) {
         qDebug() << " AUTH: requestEnvironment start";
-        QDataStream inStream(&m_input);
-        QDataStream outStream(&m_output);
+        SafeDataStream inStream(&m_input);
+        SafeDataStream outStream(&m_output);
         quint32 command = quint32(AuthMessages::AuthNone);
         int count;
+        QStringList envList;
         QProcessEnvironment env;
 
         qDebug() << "Requesting environment for user" << user;
         outStream << quint32(AuthMessages::RequestEnv) << user;
+        outStream.send();
 
-        inStream >> command;
+        inStream.receive();
+        inStream >> command >> envList;
         if (command != quint32(AuthMessages::Env)) {
             qDebug() << " AUTH: Received out of order message" << command << "when waiting for Env";
-            handleMessage(AuthMessages(command));
+            handleMessage(AuthMessages(command), inStream);
             return env;
         }
+        qDebug() << " AUTH: Received environment:" << envList;
 
-        inStream >> count;
-        while (count--) {
-            QString entry;
-            inStream >> entry;
-            env.insert(entry.left(entry.indexOf("=")), entry.mid(entry.indexOf("=") + 1));
-        }
+        foreach (const QString &s, envList)
+            env.insert(s.left(s.indexOf("=")), s.mid(s.indexOf("=") + 1));
 
         return env;
     }
 
     int AuthenticatorApp::requestSessionId() {
         qDebug() << " AUTH: requestSessionId start";
-        QDataStream inStream(&m_input);
-        QDataStream outStream(&m_output);
+        SafeDataStream inStream(&m_input);
+        SafeDataStream outStream(&m_output);
         quint32 command = quint32(AuthMessages::AuthNone);
         int id;
 
         outStream << quint32(AuthMessages::RequestSessionID);
+        outStream.send();
 
+        inStream.receive();
         inStream >> command;
         if (command != quint32(AuthMessages::SessionID)) {
             qDebug() << " AUTH: Received out of order message" << command << "when waiting for SessionID";
-            handleMessage(AuthMessages(command));
+            handleMessage(AuthMessages(command), inStream);
             return -1;
         }
         inStream >> id;
@@ -140,17 +141,19 @@ namespace SDDM {
 
     bool AuthenticatorApp::requestCookieTo(const QString& path, const QString &user) {
         qDebug() << " AUTH: requestCookieTo start";
-        QDataStream inStream(&m_input);
-        QDataStream outStream(&m_output);
+        SafeDataStream inStream(&m_input);
+        SafeDataStream outStream(&m_output);
         quint32 command = quint32(AuthMessages::AuthNone);
         qDebug() << " AUTH: Requesting Cookie to path" << path << "for user" << user;
 
         outStream << quint32(AuthMessages::RequestCookieLink) << path << user;
+        outStream.send();
 
+        inStream.receive();
         inStream >> command;
         if (command != quint32(AuthMessages::CookieLink)) {
-            qDebug() << " AUTH: Received out of order message" << command << "when waiting for SessionID";
-            handleMessage(AuthMessages(command));
+            qDebug() << " AUTH: Received out of order message" << command << "when waiting for CookieLink";
+            handleMessage(AuthMessages(command), inStream);
             return false;
         }
 
@@ -158,14 +161,40 @@ namespace SDDM {
         return true;
     }
 
+    QString AuthenticatorApp::requestDisplay() {
+        qDebug() << " AUTH: requestDisplay start";
+        SafeDataStream inStream(&m_input);
+        SafeDataStream outStream(&m_output);
+        quint32 command = quint32(AuthMessages::AuthNone);
+        qDebug() << " AUTH: Requesting Display";
+        QString display;
+
+        outStream << quint32(AuthMessages::RequestDisplay);
+        outStream.send();
+
+        inStream.receive();
+        inStream >> command;
+        if (command != quint32(AuthMessages::Display)) {
+            qDebug() << " AUTH: Received out of order message" << command << "when waiting for Display";
+            handleMessage(AuthMessages(command), inStream);
+            return display;
+        }
+        inStream >> display;
+
+        qDebug() << " AUTH: requestDisplay end";
+        return display;
+    }
+
     void AuthenticatorApp::slotLoginFailed() {
-        QDataStream outStream(&m_output);
+        SafeDataStream outStream(&m_output);
         outStream << quint32(AuthMessages::LoginFailed);
+        outStream.send();
     }
 
     void AuthenticatorApp::slotLoginSucceeded(QString user) {
-        QDataStream outStream(&m_output);
+        SafeDataStream outStream(&m_output);
         outStream << quint32(AuthMessages::LoginSucceeded) << m_method->name() << user;
+        outStream.send();
     }
 }
 

@@ -7,6 +7,7 @@ configure_file(common/Constants.h.in common/Constants.h IMMEDIATE @ONLY)
 
 set(DAEMON_SOURCES
     common/Configuration.cpp
+    common/SafeDataStream.cpp
     common/SocketWriter.cpp
     daemon/Authenticator.cpp
     daemon/DaemonApp.cpp
@@ -56,6 +57,7 @@ set(AUTHENTICATOR_SOURCES
     auth/PAM.cpp
     auth/Session.cpp
     common/Configuration.cpp
+    common/SafeDataStream.cpp
 )
 
 if(USE_QT5)

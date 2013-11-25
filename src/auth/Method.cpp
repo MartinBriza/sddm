@@ -100,15 +100,17 @@ namespace SDDM {
 
         if (!m_pam)
             return false;
-/*
+
+        QString display = AuthenticatorApp::instance()->requestDisplay();
+
         // set tty
-        if (!m_pam->setItem(PAM_TTY, ":0"))
+        if (!m_pam->setItem(PAM_TTY, qPrintable(display)))
             return false;
 
         // set display name
-        if (!m_pam->setItem(PAM_XDISPLAY, ":0"))
+        if (!m_pam->setItem(PAM_XDISPLAY, qPrintable(display)))
             return false;
-*/
+
         // set username
         if (!m_pam->setItem(PAM_USER, qPrintable(m_user)))
             return false;
