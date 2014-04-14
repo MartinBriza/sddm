@@ -160,7 +160,7 @@ namespace SDDM {
 
         // convert session to command
         QString sessionName = "";
-        QString xdgSessionName = "";
+        QString xdgCurrentDesktop = "";
         QString command = "";
 
         if (session.endsWith(".desktop")) {
@@ -184,8 +184,10 @@ namespace SDDM {
 
                     // Desktop names, change the separator
                     if (line.startsWith("DesktopNames=")) {
-                        xdgSessionName = line.mid(13);
-                        xdgSessionName.replace(';', ':');
+                        xdgCurrentDesktop = line.mid(13);
+                        while (xdgCurrentDesktop.endsWith(';'))
+                            xdgCurrentDesktop.chop(1);
+                        xdgCurrentDesktop.replace(';', ':');
                     }
                 }
 
@@ -348,7 +350,7 @@ namespace SDDM {
         env.insert("PATH", daemonApp->configuration()->defaultPath());
         env.insert("DISPLAY", m_display->name());
         env.insert("XAUTHORITY", QString("%1/.Xauthority").arg(pw->pw_dir));
-        env.insert("XDG_CURRENT_DESKTOP", xdgSessionName);
+        env.insert("XDG_CURRENT_DESKTOP", xdgCurrentDesktop);
         env.insert("XDG_SEAT", seat->name());
         env.insert("XDG_SEAT_PATH", daemonApp->displayManager()->seatPath(seat->name()));
         env.insert("XDG_SESSION_PATH", daemonApp->displayManager()->sessionPath(process->name()));
