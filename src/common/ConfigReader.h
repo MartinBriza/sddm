@@ -39,6 +39,17 @@
 #   define _S(x) (x)
 #endif
 
+// to substitute the configuration UI generator
+#ifndef UI_Config
+# define UI_Config(...)
+#endif
+#ifndef UI_Entry
+# define UI_Entry(...)
+#endif
+#ifndef UI_Section
+# define UI_Section(...)
+#endif
+
 // config wrapper
 #define Config(name, file, ...) \
     class name : public SDDM::ConfigBase, public SDDM::ConfigSection { \
@@ -52,17 +63,20 @@
             return SDDM::ConfigBase::toConfigFull(); \
         } \
         __VA_ARGS__ \
-    }
+    }; \
+    UI_Config(name, file, _VA_ARGS__)
 // entry wrapper
 #define Entry(name, type, default, description) \
-    SDDM::ConfigEntry<type> name { this, #name, (default), (description) }
+    SDDM::ConfigEntry<type> name { this, #name, (default), (description) }; \
+    UI_Entry(name, type, default, description)
 // section wrapper
 #define Section(name, ...) \
     class name : public SDDM::ConfigSection { \
     public: \
         name (SDDM::ConfigBase *_parent, const QString &_name) : SDDM::ConfigSection(_parent, _name) { } \
         __VA_ARGS__ \
-    } name { this, #name };
+    } name { this, #name }; \
+    UI_Section(name, __VA_ARGS__)
 
 QTextStream &operator>>(QTextStream &str, QStringList &list);
 QTextStream &operator<<(QTextStream &str, const QStringList &list);
@@ -77,6 +91,7 @@ namespace SDDM {
     class ConfigEntryBase {
     public:
         virtual const QString &name() const = 0;
+        virtual const QString &description() const = 0;
         virtual QString value() const = 0;
         virtual void setValue(const QString &str) = 0;
         virtual QString toConfigShort() const = 0;
@@ -140,6 +155,10 @@ namespace SDDM {
 
         const QString &name() const {
             return m_name;
+        }
+
+        const QString &description() const {
+            return m_description;
         }
 
         QString value() const {

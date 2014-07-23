@@ -143,3 +143,22 @@ add_dependencies(sddm-greeter components-translation)
 add_dependencies(sddm-greeter themes-translation)
 
 install(TARGETS sddm-greeter DESTINATION "${CMAKE_INSTALL_BINDIR}")
+
+## KCM ##
+
+set(KCM_SOURCES
+    common/ConfigReader.cpp
+    kcm/KcmApp.cpp
+)
+
+if(USE_QT5)
+    add_executable(sddm-kcm ${KCM_SOURCES})
+    target_link_libraries(sddm-kcm)
+    qt5_use_modules(sddm-kcm Quick Widgets)
+else()
+    set(QT_USE_QTDECLARATIVE TRUE)
+    include(${QT_USE_FILE})
+
+    add_executable(sddm-kcm ${KCM_SOURCES})
+    target_link_libraries(sddm-kcm ${QT_LIBRARIES})
+endif()
