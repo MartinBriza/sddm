@@ -211,6 +211,14 @@ namespace SDDM {
                 return;
             }
 
+            auth.family = FamilyWild;
+
+            if (!XauWriteAuth (fp, &auth) || fflush (fp) == EOF) {
+                qCritical() << "Writing the FamilyWild information to" << file << "failed";
+                fclose(fp);
+                return;
+            }
+
             fclose(fp);
         }
     }
